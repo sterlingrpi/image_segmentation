@@ -1,7 +1,6 @@
 import os
 import numpy as np
-import cv2
-import time
+from PIL import Image
 import tensorflow as tf
 
 def import_images(image_size, data_dir, augment):
@@ -10,10 +9,10 @@ def import_images(image_size, data_dir, augment):
     labels = []
     for i, path in enumerate(paths):
         if 'label' not in path:
-            image = cv2.imread(data_dir + '/' + path)
-            label = cv2.imread(data_dir + '/' + path.split('.')[0] + '_label.jpg', 0)
-            image = cv2.resize(image, image_size)
-            label = cv2.resize(label, image_size)
+            image = Image.open(data_dir + '/' + path)
+            label = Image.open(data_dir + '/' + path.split('.')[0] + '_label.jpg', )
+            image = np.array(image.resize(image_size, 0))
+            label = np.array(label.resize(image_size, 0))
             images.append(image)
             labels.append(label)
         if (i+1)%50 ==0:
