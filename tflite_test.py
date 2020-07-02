@@ -23,7 +23,7 @@ for image in images:
     for i in range(num_classes):
         print(np.count_nonzero(predictions == i))
     pyplot.subplot(1, 2, 1)
-    pyplot.imshow(predictions[0])
+    pyplot.imshow(predictions[0], vmax=num_classes-1)
     pyplot.subplot(1, 2, 2)
     pyplot.imshow(image)
     pyplot.show()
