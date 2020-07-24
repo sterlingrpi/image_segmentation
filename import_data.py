@@ -10,37 +10,61 @@ def import_images(image_size, data_dir, augment):
     for i, path in enumerate(paths):
         if 'label' not in path:
             image = Image.open(data_dir + '/' + path)
-            label = Image.open(data_dir + '/' + path.split('.')[0] + '_label.jpg', )
-            image = np.array(image.resize(image_size, 0))
-            label = np.array(label.resize(image_size, 0))
+            label = Image.open(data_dir + '/' + path.split('.')[0] + '_label.jpg')
+            image = image.resize(image_size, 0)
+            label = label.resize(image_size, 0)
             images.append(image)
             labels.append(label)
         if (i+1)%50 ==0:
             print(int(i/len(paths)*100), '% of images read')
     print(100, '%', "of images read")
-    images = np.array(images)/ 255.0
-    labels = np.array(labels)
 
     if augment == True:
+        rotate_range = 10
+        translate_range = 20
         aug_num = 9
-        generator = import_data_generator(images, np.expand_dims(labels, axis=3), batch_size=len(images))
-        for i, batch in enumerate(generator):
-            images = np.concatenate((images, batch[0]))
-            labels = np.concatenate((labels, batch[1][:, :, :, 0]))
-            print(int((i+1)/aug_num*100), '% of images augmented')
-            if i + 1 >= aug_num:
-                break
-        labels = labels.astype(int)
+        og_num_images = len(images)
+        for i in range(aug_num):
+            for j in range(og_num_images):
+                aug_image, aug_label = augment_image(images[j], labels[j], rotate_range, translate_range)
+                images.append(aug_image)
+                labels.append(aug_label)
+            print(int((i + 1) / aug_num * 100), '% of images augmented')
 
-    labels = np.clip(labels, 0, 8) #have to clip because jpeg sucks. consider different image format
-    num_classes = np.amax(labels) + 1
+    image_array = np.ndarray(shape=(len(images), image_size[0], image_size[1], 3), dtype=np.float32)
+    for i, image in enumerate(images):
+        image_array[i] = np.array(image)
+    label_array = np.ndarray(shape=(len(labels), image_size[0], image_size[1]), dtype=np.float32)
+    for i, label in enumerate(labels):
+        label_array[i] = np.array(label)
+    image_array = image_array / 255.0
+    label_array = label_array.astype(int)
+
+    num_classes = np.amax(label_array) + 1
+    label_array = np.clip(label_array, 0, 8) #have to clip because jpeg sucks. consider different image format
 
     weights = []
     for i in range(num_classes):
-        weights.append((1 - (labels == i).sum()/np.size(labels))*num_classes)
+        weights.append((1 - (label_array == i).sum()/np.size(label_array))*num_classes)
     weights = np.array(weights)
 
-    return images, labels, num_classes, weights
+    return image_array, label_array, num_classes, weights
+
+def augment_image(image, label, rotate_range, translate_range):
+    degrees = np.random.randint(-rotate_range, rotate_range)
+    image = image.rotate(degrees)
+    label = label.rotate(degrees)
+
+    method = Image.EXTENT
+    a = np.random.randint(-translate_range, translate_range)/100
+    b = np.random.randint(-translate_range, translate_range)/100
+    c = np.random.randint(100 - translate_range, 100 + translate_range)/100
+    d = np.random.randint(100 - translate_range, 100 + translate_range)/100
+    data_image = (image.size[0]*a, image.size[1]*b, image.size[0]*c, image.size[1]*d)
+    data_label = (label.size[0]*a, label.size[1]*b, label.size[0]*c, label.size[1]*d)
+    image = image.transform(size=image.size, method=method, data=data_image, resample=0, fill=1, fillcolor=None)
+    label = label.transform(size=label.size, method=method, data=data_label, resample=0, fill=1, fillcolor=None)
+    return image, label
 
 def import_data_generator(images, labels, batch_size):
     seed = 1864
@@ -106,7 +130,6 @@ def import_data_generator_from_directory(image_path, label_path, input_size, out
 
 if __name__ == '__main__':
     data_dir = 'D:/PycharmProjects/ssd-tf2/dataset/bird_images'
-    image_size = (224, 224)  # images not resized if set to (0,0)
-    num_classes = 9
+    image_size = (256, 256)  # images not resized if set to (0,0)
 
-    import_images(image_size, data_dir)
+    images, labels, num_classes, weights = import_images(image_size, data_dir, augment=True)
