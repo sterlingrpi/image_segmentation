@@ -1,32 +1,35 @@
 import os
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance
 import tensorflow as tf
 
-def import_images(image_size, data_dir, augment):
-    paths = os.listdir(data_dir)
+def import_images(image_size, label_size, image_dir, label_dir, augment):
+    paths = os.listdir(image_dir)
     images = []
     labels = []
     for i, path in enumerate(paths):
-        if 'label' not in path:
-            image = Image.open(data_dir + '/' + path)
-            label = Image.open(data_dir + '/' + path.split('.')[0] + '_label.jpg')
+        image = Image.open(image_dir + '/' + path)
+        try:
+            label = Image.open(label_dir + '/' + path.split('.')[0] + '.png')
             image = image.resize(image_size, 0)
-            label = label.resize(image_size, 0)
+            label = label.resize(label_size, 0)
             images.append(image)
             labels.append(label)
-        if (i+1)%50 ==0:
+        except:
+            print('file', label_dir + '/' + path.split('.')[0] + '.png', 'does not exist')
+        if (i+1)%25 ==0:
             print(int(i/len(paths)*100), '% of images read')
     print(100, '%', "of images read")
 
     if augment == True:
         rotate_range = 10
         translate_range = 20
+        brightness_range = 20
         aug_num = 9
         og_num_images = len(images)
         for i in range(aug_num):
             for j in range(og_num_images):
-                aug_image, aug_label = augment_image(images[j], labels[j], rotate_range, translate_range)
+                aug_image, aug_label = augment_image(images[j], labels[j], rotate_range, translate_range, brightness_range)
                 images.append(aug_image)
                 labels.append(aug_label)
             print(int((i + 1) / aug_num * 100), '% of images augmented')
@@ -34,14 +37,14 @@ def import_images(image_size, data_dir, augment):
     image_array = np.ndarray(shape=(len(images), image_size[0], image_size[1], 3), dtype=np.float32)
     for i, image in enumerate(images):
         image_array[i] = np.array(image)
-    label_array = np.ndarray(shape=(len(labels), image_size[0], image_size[1]), dtype=np.float32)
+    label_array = np.ndarray(shape=(len(labels), label_size[0], label_size[1]), dtype=np.float32)
     for i, label in enumerate(labels):
         label_array[i] = np.array(label)
     image_array = image_array / 255.0
     label_array = label_array.astype(int)
 
     num_classes = np.amax(label_array) + 1
-    label_array = np.clip(label_array, 0, 8) #have to clip because jpeg sucks. consider different image format
+    #label_array = np.clip(label_array, 0, 8) #have to clip because jpeg sucks. consider different image format
 
     weights = []
     for i in range(num_classes):
@@ -50,7 +53,7 @@ def import_images(image_size, data_dir, augment):
 
     return image_array, label_array, num_classes, weights
 
-def augment_image(image, label, rotate_range, translate_range):
+def augment_image(image, label, rotate_range, translate_range, brightness_range):
     degrees = np.random.randint(-rotate_range, rotate_range)
     image = image.rotate(degrees)
     label = label.rotate(degrees)
@@ -64,6 +67,11 @@ def augment_image(image, label, rotate_range, translate_range):
     data_label = (label.size[0]*a, label.size[1]*b, label.size[0]*c, label.size[1]*d)
     image = image.transform(size=image.size, method=method, data=data_image, resample=0, fill=1, fillcolor=None)
     label = label.transform(size=label.size, method=method, data=data_label, resample=0, fill=1, fillcolor=None)
+
+    enhancer = ImageEnhance.Brightness(image)
+    factor = np.random.randint(100 - brightness_range, 100 + brightness_range)/100
+    image = enhancer.enhance(factor)
+
     return image, label
 
 def import_data_generator(images, labels, batch_size):

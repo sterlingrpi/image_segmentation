@@ -4,8 +4,11 @@ from import_data import import_images
 from get_model import unet_model
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
-image_size = (256, 256)
-data_dir = 'D:/PycharmProjects/ssd-tf2/dataset/bird_images'
+model_path = './models/seg_512_same.h5'
+image_dir = 'D:/PycharmProjects/image_segmentation/bird_images'
+label_dir = 'D:/PycharmProjects/image_segmentation/bird_labels'
+image_size = (512, 512)
+label_size = (512, 512)
 def train(images, labels, num_classes, weights):
     print('images shape =', np.shape(images))
     print('labels shape =', np.shape(labels))
@@ -24,20 +27,20 @@ def train(images, labels, num_classes, weights):
                   metrics=['accuracy'],)
 
     callbacks = [EarlyStopping(monitor='val_loss', patience=3, verbose=0),
-                ModelCheckpoint('model.h5', monitor='val_loss', verbose=0, save_best_only=True, save_freq='epoch'),]
+                ModelCheckpoint(model_path, monitor='val_loss', verbose=0, save_freq='epoch'),]
 
     model_history = model.fit(
                             x=images,
                             y=labels,
                             epochs=20,
-                            batch_size = 25,
-                            steps_per_epoch=25,
+                            batch_size = 10,
+                            steps_per_epoch=100,
                             callbacks=callbacks
                             )
 
-    model.save('model.h5', include_optimizer=False)
+    model.save(model_path, include_optimizer=False)
 
 if __name__ == '__main__':
-    images, labels, num_classes, weights = import_images(image_size, data_dir, augment=True)
+    images, labels, num_classes, weights = import_images(image_size, label_size, image_dir, label_dir, augment=True)
     # visualy_inspect_generated_data(images, labels)
     train(images, labels, num_classes, weights)
