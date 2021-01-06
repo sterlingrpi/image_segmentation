@@ -1,4 +1,4 @@
-Image segmentation is the process of classifying an image pixel by pixel This gives not only the class of objects detected, but also their shape and locations.
+Image segmentation is the process of classifying an image pixel by pixel. This gives not only the class of objects detected, but also their shape and locations.
 The model as specified in get_model.py is a u-net model. The backbone is taken from MobileNetV2 with the weights set to not be trainable. By using transfer learning
 we are able to converge faster and with a smaller training set. The model is taken from the tensorflow example below:
 https://www.tensorflow.org/tutorials/images/segmentation
